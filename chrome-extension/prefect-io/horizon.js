@@ -281,7 +281,7 @@
                   { t: 1, s: "strawgate/prefect-horizon-story" },
                   { t: 1, s: "strawgate" },
                   { t: 1, s: "prefect-horizon-story" },
-                  { t: 2, s: 2 }, // isPrivate = true
+                  { t: 2, s: 3 }, // isPrivate = false (public repo)
                   { t: 0, s: STRAWGATE_INSTALL_ID },
                 ],
               },
