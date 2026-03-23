@@ -4,6 +4,33 @@ What would it look like if Prefect Cloud and Horizon were deeply integrated — 
 
 This project is a working simulation of that world. Install the Chrome extension and the experience comes to life across Prefect Cloud, Horizon, and prefect.io.
 
+```mermaid
+graph LR
+    subgraph Prefect Cloud
+        D[Deployment] -->|publish as tool| A[Adapter]
+    end
+
+    subgraph Horizon
+        A -->|appears in| R[Registry]
+        R -->|governed by| G[Gateway]
+        G -->|callable by| AG[Agents]
+    end
+
+    subgraph Reverse Direction
+        T[Horizon Tools] -->|compose into| W[Prefect Workflow]
+        W -->|deploy to| D2[Cloud Deployment]
+    end
+
+    style A fill:#2EDDB5,color:#000,stroke:#1a8a6e
+    style R fill:#A78BFA,color:#000,stroke:#7c5cc4
+    style G fill:#A78BFA,color:#000,stroke:#7c5cc4
+    style AG fill:#A78BFA,color:#000,stroke:#7c5cc4
+    style D fill:#3B82F6,color:#fff,stroke:#2563EB
+    style D2 fill:#3B82F6,color:#fff,stroke:#2563EB
+    style T fill:#A78BFA,color:#000,stroke:#7c5cc4
+    style W fill:#3B82F6,color:#fff,stroke:#2563EB
+```
+
 ## The Chrome extension
 
 The extension injects functional UI into three sites to simulate the integrated experience:
