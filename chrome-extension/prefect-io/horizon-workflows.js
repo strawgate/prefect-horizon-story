@@ -19,33 +19,8 @@
   const ORG_SLUG = "chain-of-action";
 
   // TanStack server function that returns {id (serverId), orgId, name, ...}
-  // given {orgSlug, projectName}. Hash changes every Horizon deploy, so we
-  // discover it dynamically from the page's JS bundles.
-  let _serverInfoHash = null;
-
-  async function discoverServerInfoHash() {
-    if (_serverInfoHash) return _serverInfoHash;
-    const scripts = Array.from(document.querySelectorAll("script[src]"));
-    for (const script of scripts) {
-      try {
-        const resp = await fetch(script.src);
-        if (!resp.ok) continue;
-        const text = await resp.text();
-        const matches = text.matchAll(/_serverFn\/([a-f0-9]{64})/g);
-        for (const m of matches) {
-          const idx = m.index;
-          const vicinity = text.slice(Math.max(0, idx - 500), idx + 500);
-          if (vicinity.includes("orgSlug") || vicinity.includes("projectName")) {
-            _serverInfoHash = m[1];
-            return _serverInfoHash;
-          }
-        }
-      } catch {
-        /* skip */
-      }
-    }
-    throw new Error("Could not discover server-info function hash.");
-  }
+  // given {orgSlug, projectName}.
+  const SERVER_INFO_FN = "c4a10a155a105e0326d9482074add33484581bbf5153f16982ac8d76d28e1b51";
 
   // ── Styles ─────────────────────────────────────────────────────────────────
 
@@ -329,9 +304,8 @@
       f: 63,
       m: [],
     };
-    const serverInfoFn = await discoverServerInfoHash();
     const resp = await fetch(
-      `/_serverFn/${serverInfoFn}?payload=${encodeURIComponent(JSON.stringify(payload))}`,
+      `/_serverFn/${SERVER_INFO_FN}?payload=${encodeURIComponent(JSON.stringify(payload))}`,
       {
         headers: {
           accept: "application/x-tss-framed, application/x-ndjson, application/json",
