@@ -13,12 +13,94 @@
   const WIZARD_ID = "prefect-bridge-wizard";
   const STYLE_ID = "prefect-bridge-styles";
 
-  // ── Horizon API constants ─────────────────────────────────────────────────────
+  // ── Horizon API — dynamic hash discovery ─────────────────────────────────────
+  //
+  // TanStack Start server functions are addressed by content-hash. These hashes
+  // change on every Horizon deploy, so we can't hardcode them. Instead we:
+  //   1. Inject a fetch interceptor into the PAGE world (content scripts are
+  //      isolated and can't see the page's fetch traffic). The interceptor
+  //      captures the session JWT that Horizon fetches on page load and posts
+  //      it back to us via CustomEvent.
+  //   2. For the create-server hash, scan Horizon's JS bundles for the hash
+  //      near identifiable field names like "serverName" / "installationId".
 
-  // TanStack Start server function hashes — stable as long as Horizon's source doesn't change.
-  const SESSION_FN = "1cc78742dc24d73005a132eed91efeac2a47a65544832d5f8cd259a36d562d2e";
-  const CREATE_FN = "182d32013c69ab1a70c03ac7a5f866a34257c766d7b0645a795fff7ef2e19d25";
   const STRAWGATE_INSTALL_ID = 78882685;
+
+  // --- Session JWT: inject fetch interceptor into the page world ---
+  let _cachedOrgId = null;
+  const _orgIdReady = new Promise((resolve) => {
+    // Listen for the interceptor's event
+    window.addEventListener("__pdt_orgid", (e) => {
+      if (e.detail && !_cachedOrgId) {
+        _cachedOrgId = e.detail;
+        resolve(e.detail);
+      }
+    });
+    // Inject a <script> into the MAIN world to patch fetch
+    const script = document.createElement("script");
+    script.textContent = `(function(){
+      var _orig = window.fetch;
+      var _found = false;
+      window.fetch = function(){
+        var p = _orig.apply(this, arguments);
+        if (_found) return p;
+        var url = typeof arguments[0] === "string" ? arguments[0] : (arguments[0] && arguments[0].url);
+        if (url && url.indexOf("/_serverFn/") !== -1) {
+          p.then(function(resp){
+            resp.clone().text().then(function(text){
+              var m = text.match(/eyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+/);
+              if (!m) return;
+              try {
+                var part = m[0].split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+                part += "====".slice(part.length%4||4);
+                var pay = JSON.parse(atob(part));
+                if (pay.horizon_organization_id && !_found) {
+                  _found = true;
+                  window.dispatchEvent(new CustomEvent("__pdt_orgid",{detail:pay.horizon_organization_id}));
+                }
+              } catch(e){}
+            });
+          });
+        }
+        return p;
+      };
+    })();`;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove(); // clean up — the patch persists on window.fetch
+  });
+
+  // --- Create-server function hash discovery from JS bundles ---
+  let _createFnHash = null;
+
+  async function discoverCreateFnHash() {
+    if (_createFnHash) return _createFnHash;
+    const scripts = Array.from(document.querySelectorAll("script[src]"));
+    for (const script of scripts) {
+      try {
+        const resp = await fetch(script.src);
+        if (!resp.ok) continue;
+        const text = await resp.text();
+        const matches = text.matchAll(/_serverFn\/([a-f0-9]{64})/g);
+        for (const m of matches) {
+          const idx = m.index;
+          const vicinity = text.slice(Math.max(0, idx - 500), idx + 500);
+          if (
+            vicinity.includes("serverName") ||
+            vicinity.includes("installationId") ||
+            vicinity.includes("envVariables")
+          ) {
+            _createFnHash = m[1];
+            return _createFnHash;
+          }
+        }
+      } catch {
+        /* CORS or network error — skip */
+      }
+    }
+    throw new Error(
+      "Could not discover create-server function hash. Horizon may have changed its build structure.",
+    );
+  }
 
   // ── CSS ───────────────────────────────────────────────────────────────────────
 
@@ -210,27 +292,17 @@
     }
   }
 
-  /** Fetch the current user's Horizon org UUID from the session JWT. */
+  /** Get the current user's Horizon org UUID from the intercepted session JWT. */
   async function getOrgId() {
-    const resp = await fetchWithTimeout(`/_serverFn/${SESSION_FN}`, {
-      headers: {
-        accept: "application/x-tss-framed, application/x-ndjson, application/json",
-        "x-tsr-serverfn": "true",
-      },
-    });
-    if (!resp.ok) throw new Error(`Session fetch failed: ${resp.status}`);
-    const text = await resp.text();
-    const jwtMatch = text.match(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
-    if (!jwtMatch) throw new Error("JWT not found in session response");
-    const payloadPart = jwtMatch[0].split(".")[1];
-    const padded = payloadPart
-      .replace(/-/g, "+")
-      .replace(/_/g, "/")
-      .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=");
-    const payload = JSON.parse(atob(padded));
-    const orgId = payload.horizon_organization_id;
-    if (!orgId) throw new Error("horizon_organization_id missing from JWT");
-    return orgId;
+    if (_cachedOrgId) return _cachedOrgId;
+    // Wait up to 10s for Horizon's own session call to be intercepted
+    const timeout = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Timed out waiting for session JWT. Try refreshing the page.")),
+        10000,
+      ),
+    );
+    return Promise.race([_orgIdReady, timeout]);
   }
 
   /**
@@ -301,7 +373,8 @@
     const serverName = `prefect-${adjectives[Math.floor(Math.random() * adjectives.length)]}-${nouns[Math.floor(Math.random() * nouns.length)]}-${rand()}`;
 
     const body = buildCreateBody({ serverName, orgId, apiKey, workspaceUrl });
-    const resp = await fetchWithTimeout(`/_serverFn/${CREATE_FN}`, {
+    const createHash = await discoverCreateFnHash();
+    const resp = await fetchWithTimeout(`/_serverFn/${createHash}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
