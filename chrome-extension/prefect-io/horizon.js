@@ -231,8 +231,14 @@
       .replace(/_/g, "/")
       .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=");
     const payload = JSON.parse(atob(padded));
-    const orgId = payload.org_id || payload.horizon_organization_id;
-    if (!orgId) throw new Error("org_id missing from JWT");
+    const workosOrgId = payload.org_id || payload.horizon_organization_id;
+    if (!workosOrgId) throw new Error("org_id missing from JWT");
+    // Resolve WorkOS org ID → Horizon internal UUID via the organizations API
+    const orgResp = await fetchWithTimeout(`/api/v0/organizations/${workosOrgId}?`);
+    if (!orgResp.ok) throw new Error(`Failed to resolve Horizon org: ${orgResp.status}`);
+    const orgData = await orgResp.json();
+    const orgId = orgData.id;
+    if (!orgId) throw new Error("Horizon org UUID not found in organizations API response");
     return orgId;
   }
 
@@ -275,13 +281,13 @@
                   { t: 1, s: "" }, // description = empty string
                   { t: 1, s: orgId },
                   { t: 1, s: "main.py" },
-                  { t: 2, s: 1 }, // requirements = undefined
+                  { t: 1, s: "pyproject.toml" }, // requirements file
                   envArr,
                   { t: 1, s: "fastmcp-cloud" },
                   { t: 1, s: "strawgate/prefect-horizon-story" },
                   { t: 1, s: "strawgate" },
                   { t: 1, s: "prefect-horizon-story" },
-                  { t: 2, s: 2 }, // isPrivate = true
+                  { t: 2, s: 3 }, // isPrivate = false
                   { t: 0, s: STRAWGATE_INSTALL_ID },
                 ],
               },
