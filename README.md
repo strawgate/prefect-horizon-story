@@ -1,15 +1,48 @@
 # Prefect–Horizon Bridge
 
-A [FastMCP](https://github.com/jlowin/fastmcp) adapter that bridges Prefect Cloud and Horizon — turning Prefect deployments into governed MCP tools. Tag a deployment with `mcp-tool` and it becomes callable from Claude Desktop, Cursor, or any MCP client, with hosting and governance through Horizon.
+What would it look like if Prefect Cloud and Horizon were deeply integrated — if any Prefect deployment could become a governed MCP tool with a click, and any set of Horizon tools could become a durable Prefect workflow?
 
-## How it works
+This project is a working simulation of that world. Install the Chrome extension and the experience comes to life across Prefect Cloud, Horizon, and prefect.io.
+
+## The Chrome extension
+
+The extension injects functional UI into three sites to simulate the integrated experience:
+
+### Prefect Cloud / Prefect OSS (`app.prefect.cloud`, `localhost:4200`)
+
+Adds a **Model Context Protocol (AI)** row to the deployment detail sidebar — right alongside Schedules and Triggers. From this row you can:
+
+- Publish a deployment as an MCP tool with one click
+- Choose a response mode (metadata only, + artifacts, or + logs) — each an explicit security opt-in
+- See the current mode at a glance via an inline badge
+- Remove MCP exposure just as easily
+
+This is the "publish a workflow as a tool" experience — the deployment's Python type hints become the tool's input schema, its docstring becomes the tool description, and its artifacts become structured output agents can reason over.
+
+### Horizon Cloud (`horizon.prefect.io`)
+
+Injects two features into the Horizon server management UI:
+
+**Prefect Cloud Bridge** — A configuration panel that connects a Prefect Cloud workspace to a Horizon server. Enter your API URL and key, and the extension deploys a FastMCP adapter (the one in this repo) as a Horizon-managed server. Every tagged deployment in your Cloud workspace becomes a tool in Horizon Registry, governed by Horizon Gateway.
+
+**Workflow Creation Wizard** — The reverse direction. Select any tools from your Horizon server, name a flow, and the wizard generates a typed Prefect workflow that calls those tools as tasks — with a deploy command ready to go. This turns fragile tool chains into durable Prefect workflows.
+
+### prefect.io
+
+Injects a **Chain of Action** product page into the Solutions dropdown — a full product narrative for what happens when Prefect's execution layer meets Horizon's agent governance. Includes scroll animations, three blog posts, and a mode comparison. Renders in a Shadow DOM overlay to avoid interfering with the real site.
+
+## The adapter
+
+The FastMCP adapter is the working backend that powers the bridge. It's not a mock — it actually discovers deployments, registers MCP tools, and brokers execution against a real Prefect server.
+
+### How it works
 
 1. On startup, the adapter queries the Prefect API (Cloud or self-hosted) for all deployments tagged `mcp-tool`
 2. For each deployment, it reads the parameter schema and registers a typed MCP tool
 3. When a tool is called, it triggers the deployment, waits for the flow run to complete, and returns results
 4. Two built-in meta-tools (`list_workflows`, `refresh_workflows`) let clients discover and refresh available tools at runtime
 
-## Quick start
+### Quick start
 
 **Horizon Cloud (recommended):** Visit your [Horizon Cloud servers page](https://horizon.prefect.io/chain-of-action/servers) to set up the adapter with guided configuration for Claude Desktop, Cursor, and other MCP clients.
 
@@ -30,7 +63,7 @@ fastmcp install main.py --name prefect-tools
 
 **Using a self-hosted Prefect server?** See [ONPREM.md](ONPREM.md) for the on-prem getting started guide.
 
-## Tagging your deployments
+### Tagging your deployments
 
 Add `mcp-tool` to any deployment's tags to expose it. Additional tags control how much data the tool returns:
 
@@ -52,7 +85,7 @@ my_flow.deploy(
 
 Tool parameters are derived directly from the flow's parameter schema — types, defaults, and required fields are all preserved.
 
-## Response format
+### Response format
 
 Every tool returns a JSON object. Here's a Mode 3 response from a flow with three tasks:
 
@@ -86,14 +119,14 @@ Every tool returns a JSON object. Here's a Mode 3 response from a flow with thre
 
 Failed flows return `"status": "FAILED"` with an `"error"` field containing the exception message. Timed-out flows return `"status": "TIMEOUT"` with the `flow_run_id` so you can check on it later.
 
-## Meta-tools
+### Meta-tools
 
 Two tools are always available regardless of deployments:
 
 - **`list_workflows`** — Returns all registered tools with their parameters and response modes
 - **`refresh_workflows`** — Re-scans the Prefect API (Cloud or self-hosted) and picks up new/removed deployments without restarting the server
 
-## Configuration
+### Configuration
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -104,7 +137,7 @@ Two tools are always available regardless of deployments:
 | `MCP_TOOL_CONFIG` | — | Inline JSON or YAML tool config (see below) |
 | `MCP_TOOL_CONFIG_FILE` | — | Path to a JSON or YAML tool config file |
 
-### Tool config file
+#### Tool config file
 
 By default every `mcp-tool`-tagged deployment is exposed. A config file (or `mcp-tools.yaml` in the working directory) lets you filter and override that set:
 
@@ -151,26 +184,25 @@ python examples/deploy_examples.py
 ## Project structure
 
 ```
-main.py                  # FastMCP server entry point
+chrome-extension/
+  manifest.json            # MV3 manifest — declares all content scripts
+  prefect-app/
+    logic.js               # Pure logic — URL parsing, tag rules, mode calc
+    toolbar.js             # Content script — MCP toolbar for Prefect Cloud
+    toolbar.css            # Toolbar styles
+    logic.test.js          # Unit tests
+    toolbar.e2e.js         # E2E tests (Playwright, needs local Prefect server)
+  prefect-io/
+    chain-of-action.js     # Content script — product page overlay (prefect.io)
+    chain-of-action.e2e.js # E2E tests (Playwright, hits live prefect.io)
+    horizon.js             # Content script — Prefect Cloud Bridge (horizon.prefect.io)
+    horizon-workflows.js   # Content script — Workflow Creation Wizard (horizon.prefect.io)
+main.py                    # FastMCP server entry point
 src/adapter/
-  provider.py            # Discover deployments, build PrefectTool instances
-  schema.py              # PrefectTool — MCP Tool backed by a Prefect deployment
-  executor.py            # Trigger flows, wait, build responses
-  config.py              # Load include/exclude/override config from env or file
-examples/
-  hello_world.py         # Mode 1 example flow
-  sales_report.py        # Mode 2 example flow (table + markdown artifacts)
-  ai_research.py         # Mode 2 example flow (PydanticAI structured output)
-  database_report.py     # Mode 2 example flow (SQLite analytics)
-  web_to_markdown.py     # Mode 2 example flow (web scraping)
-  deploy_examples.py     # Deployment script
-tests/
-  conftest.py            # Ephemeral Prefect server fixture + shared helpers
-  test_discovery.py      # Tool naming, mode detection
-  test_schema.py         # PrefectTool construction and execution
-  test_executor.py       # URL building, log levels
-  test_provider.py       # Provider discovery, refresh, collision detection
-  test_integration.py    # API-level tests against ephemeral server
-  test_live_flows.py     # Real flow execution tests
-  flows/math_flow.py     # Test flows (multi-task, failing)
+  provider.py              # Discover deployments, build PrefectTool instances
+  schema.py                # PrefectTool — MCP Tool backed by a Prefect deployment
+  executor.py              # Trigger flows, wait, build responses
+  config.py                # Load include/exclude/override config from env or file
+examples/                  # Sample flows covering each response mode
+tests/                     # Unit, integration, and live flow tests
 ```
