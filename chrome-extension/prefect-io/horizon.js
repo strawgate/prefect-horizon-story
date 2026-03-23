@@ -231,8 +231,8 @@
       .replace(/_/g, "/")
       .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=");
     const payload = JSON.parse(atob(padded));
-    const orgId = payload.horizon_organization_id;
-    if (!orgId) throw new Error("horizon_organization_id missing from JWT");
+    const orgId = payload.org_id || payload.horizon_organization_id;
+    if (!orgId) throw new Error("org_id missing from JWT");
     return orgId;
   }
 
