@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Prefect Tools",
+  "version": "1.0.0",
+  "description": "Exposes Prefect deployments as MCP tools and adds a Chain of Action page to prefect.io.",
+  "permissions": [],
+  "host_permissions": [
+    "https://app.prefect.cloud/*",
+    "https://api.prefect.cloud/*",
+    "https://www.prefect.io/*",
+    "https://prefect.io/*",
+    "https://horizon.prefect.io/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://app.prefect.cloud/*", "http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "js": ["prefect-app/logic.js", "prefect-app/toolbar.js"],
+      "css": ["prefect-app/toolbar.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.prefect.io/*", "https://prefect.io/*"],
+      "js": ["prefect-io/chain-of-action.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://horizon.prefect.io/*"],
+      "js": ["prefect-io/horizon.js", "prefect-io/horizon-workflows.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Prefect Tools"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

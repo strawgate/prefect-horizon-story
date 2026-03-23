@@ -1,0 +1,93 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly on Sunday at 06:00 UTC
+    - cron: "0 6 * * 0"
+
+jobs:
+  toolbar-e2e:
+    name: Toolbar E2E (Prefect server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      # Install Python deps and example flows
+      - run: uv sync --dev --extra examples
+
+      # Start Prefect server in background
+      - name: Start Prefect server
+        run: |
+          uv run prefect server start &
+          # Wait for server to be ready
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:4200/api/health > /dev/null 2>&1; then
+              echo "Prefect server is ready"
+              break
+            fi
+            sleep 2
+          done
+
+      # Deploy example flows so toolbar tests have deployments to work with
+      - name: Deploy example flows
+        run: |
+          uv run prefect work-pool create default --type process 2>/dev/null || true
+          uv run python examples/deploy_examples.py
+
+      # Install Playwright
+      - name: Install Playwright
+        run: |
+          npm install playwright
+          npx playwright install chromium
+
+      # Run toolbar E2E tests
+      - name: Run toolbar E2E tests
+        run: node chrome-extension/prefect-app/toolbar.e2e.js
+        env:
+          CHROMIUM_PATH: ""
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: toolbar-e2e-screenshots
+          path: /tmp/test*.png
+          if-no-files-found: ignore
+
+  chain-of-action-e2e:
+    name: Chain of Action E2E (prefect.io)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      # Install Playwright where the test expects it (/tmp/node_modules)
+      - name: Install Playwright
+        run: |
+          cd /tmp && npm install playwright
+          npx playwright install chromium
+
+      # Run chain-of-action E2E tests
+      - name: Run chain-of-action E2E tests
+        working-directory: chrome-extension
+        run: node prefect-io/chain-of-action.e2e.js
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chain-of-action-e2e-screenshots
+          path: /tmp/test*.png
+          if-no-files-found: ignore

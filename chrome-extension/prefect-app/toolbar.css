@@ -1,0 +1,307 @@
+/* Horizon Bridge row — layout uses native Prefect p-key-value + p-button classes */
+
+/* ── Tier pipeline ───────────────────────────────────────────────────── */
+
+.hb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hb-tiers {
+  display: flex;
+  align-items: center;
+}
+
+.hb-tier {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #475569;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  letter-spacing: 0.02em;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.hb-tier::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #475569;
+  margin-right: 5px;
+  transition: background 0.2s;
+}
+
+.hb-on.hb-t1 { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border-color: rgba(59, 130, 246, 0.25); }
+.hb-on.hb-t1::before { background: #60a5fa; }
+.hb-on.hb-t2 { background: rgba(74, 222, 128, 0.12); color: #4ade80; border-color: rgba(74, 222, 128, 0.25); }
+.hb-on.hb-t2::before { background: #4ade80; }
+.hb-on.hb-t3 { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.25); }
+.hb-on.hb-t3::before { background: #fbbf24; }
+
+.hb-conn {
+  width: 14px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.hb-conn-on {
+  background: rgba(74, 222, 128, 0.4);
+}
+
+/* ── Setup modal ────────────────────────────────────────────────────── */
+
+.mcp-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: mcp-fade-in 0.15s ease;
+}
+
+@keyframes mcp-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mcp-modal {
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 780px;
+  width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: mcp-slide-up 0.2s ease;
+}
+
+@keyframes mcp-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.mcp-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mcp-modal-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.mcp-modal-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.mcp-modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mcp-modal-close:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+}
+
+.mcp-modal-subtitle {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.mcp-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.mcp-mode-card {
+  background: #141926;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 22px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  position: relative;
+}
+
+.mcp-mode-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.mcp-mode-card.mcp-card-active {
+  border-color: #4ade80;
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.1);
+}
+
+.mcp-mode-card:focus-visible {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+}
+
+.mcp-mode-card.mcp-card-active:focus-visible {
+  border-color: #4ade80;
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.1);
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+}
+
+.mcp-mode-card.mcp-card-recommended::after {
+  content: 'Recommended';
+  position: absolute;
+  top: -8px;
+  right: 16px;
+  background: #4ade80;
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.mcp-card-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.mcp-tag-1 { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.mcp-tag-2 { background: rgba(74, 222, 128, 0.12); color: #4ade80; }
+.mcp-tag-3 { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+
+.mcp-mode-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px;
+}
+
+.mcp-card-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.mcp-card-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mcp-card-features li {
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mcp-card-features li::before {
+  content: '\2713';
+  color: #4ade80;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.mcp-card-features li.mcp-feat-off::before {
+  content: '\2014';
+  color: #374151;
+}
+
+.mcp-card-features li.mcp-feat-off {
+  color: #374151;
+}
+
+.mcp-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mcp-modal-remove {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.mcp-modal-remove:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+@media (max-width: 640px) {
+  .mcp-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Deployment list page: inline badges ─────────────────────────────── */
+
+.mcp-list-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  margin-left: 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  vertical-align: middle;
+}
+.mcp-list-badge .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4ade80;
+}

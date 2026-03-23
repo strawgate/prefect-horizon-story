@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+node_modules/
+
+# Scratch / design files dropped in root during development
+/*.html
+/website_files/
+/plan.md
+
+.env
+.playwright-mcp/
+playwright-mcp.config.json

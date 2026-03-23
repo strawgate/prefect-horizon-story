@@ -1,0 +1,92 @@
+[project]
+name = "prefect-mcp-adapter"
+version = "0.1.0"
+description = "Expose Prefect deployments as MCP tools"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=3,<4",
+    "prefect>=3,<4",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+examples = [
+    "httpx>=0.27.0",
+    "html2text>=2020.1.16",
+    "pydantic-ai>=0.0.14",
+    "google-genai>=1.0.0",
+    "prefect-github>=0.4.2",
+]
+tasks = [
+    "fastmcp[tasks]",  # pulls in pydocket for Docket/memory:// support (SEP-1686)
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.15.0",
+    "ty>=0.0.23",
+]
+
+[build-system]
+requires = ["uv_build>=0.7.14,<1.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "adapter"
+module-root = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "S",     # flake8-bandit (security)
+    "T20",   # flake8-print
+    "RUF",   # ruff-specific
+    "N",     # pep8-naming
+    "A",     # flake8-builtins
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "ISC",   # flake8-implicit-str-concat
+    "PIE",   # flake8-pie
+    "PT",    # flake8-pytest-style
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "TCH",   # flake8-type-checking
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "PERF",  # perflint
+    "FURB",  # refurb
+    "LOG",   # flake8-logging
+    "FLY",   # flynt
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["T201"]  # print() for startup logging
+"tests/**" = ["S101", "S106", "T201", "ARG"]
+"examples/**" = ["S311", "T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["adapter"]
+
+[tool.ty.src]
+include = ["src", "main.py"]
+
+[tool.ty.rules]
+# Promote all warn-level rules to errors (strict mode equivalent)
+all = "error"

@@ -1,0 +1,16 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "userDataDir": "/path/to/this/repo/.playwright-mcp/profile",
+    "launchOptions": {
+      "channel": "chrome",
+      "args": [
+        "--load-extension=/path/to/this/repo/chrome-extension"
+      ]
+    },
+    "initScript": [
+      "/path/to/this/repo/chrome-extension/prefect-app/logic.js",
+      "/path/to/this/repo/chrome-extension/prefect-app/toolbar.js"
+    ]
+  }
+}
